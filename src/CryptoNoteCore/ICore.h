@@ -85,6 +85,7 @@ public:
                                 std::vector<Crypto::PublicKey>& publicKeys) const = 0;
 
   virtual bool addTransactionToPool(const BinaryArray& transactionBinaryArray) = 0;
+  virtual bool addTransactionToPool(const BinaryArray& transactionBinaryArray, bool& rejectedIfAlreadyExisting) = 0;
 
   virtual std::vector<Crypto::Hash> getPoolTransactionHashes() const = 0;
   virtual bool getPoolChanges(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes,
@@ -107,5 +108,6 @@ public:
   virtual std::vector<Crypto::Hash> getAlternativeBlockHashesByIndex(uint32_t blockIndex) const = 0;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const = 0;
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const = 0;
+  virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) = 0;
 };
 }

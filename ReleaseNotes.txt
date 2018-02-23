@@ -1,3 +1,29 @@
+Release notes 1.1.0
+
+- Support for GCC 6+
+- Fix many errors "Tx verification failed" displayed on every transaction
+- Add restricted RPC mode ("--restricted-rpc")
+- Add CORS support ("--enable-cors <domains>")
+- Add default fee parameter for simplewallet ("--DEFAULT_FEE")
+- Add keys import and export feature for simplewallet (this now makes it possible to recover wallets converted by the GUI wallet to CLI-compatible ones)
+- Fix bug in payment gate service regarding empty transaction lists
+- Fix off-by-one error in daemon RPC which returned incorrect block for getblockheaderbyheight - IMPORTANT: If you had workarounds in place for this, remove them now!
+- Fix security hole regarding double spend attacks with low order point key images
+- Add "k_transactions_by_payment_id" RPC method
+- Ensure that the RPC server is always returning data type "application/json" when returning JSON (not only at the /json_rpc endpoint) - IMPORTANT: If you were using jQuery you probably used JSON.parse there, remove it now!
+- Fix incorrect spelling of "on_getblockhash" RPC command (should be "getblockhash") - old command is still accepted for compatibility reasons
+- Fix incorrect spelling of "f_on_transactions_pool_json" RPC command (should be "f_transactions_pool_json")
+- Change coin name to BitcoiNote - auto-create symlink for data directory so that both old and new name work (.Bitcoinote and .BitcoiNote)
+- Disable start_mining/stop_mining commands in simplewallet because the daemon doesn't support them anyways
+
+Release notes 1.0.2
+
+- Fix (as good as possible) handling of paths with non-ASCII characters
+
+Release notes 1.0.1
+
+- Fix Windows compatibility
+
 Release notes 1.0.0
 
 Initial version

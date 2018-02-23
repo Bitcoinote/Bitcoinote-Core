@@ -888,7 +888,7 @@ bool Core::getRandomOutputs(uint64_t amount, uint16_t count, std::vector<uint32_
   return false;
 }
 
-bool Core::addTransactionToPool(const BinaryArray& transactionBinaryArray) {
+bool Core::addTransactionToPool(const BinaryArray& transactionBinaryArray, bool& rejectedBecauseAlreadyExisting) {
   throwIfNotInitialized();
 
   Transaction transaction;
@@ -900,7 +900,7 @@ bool Core::addTransactionToPool(const BinaryArray& transactionBinaryArray) {
   CachedTransaction cachedTransaction(std::move(transaction));
   auto transactionHash = cachedTransaction.getTransactionHash();
 
-  if (!addTransactionToPool(std::move(cachedTransaction))) {
+  if (!addTransactionToPool(std::move(cachedTransaction), rejectedBecauseAlreadyExisting)) {
     return false;
   }
 
@@ -908,7 +908,14 @@ bool Core::addTransactionToPool(const BinaryArray& transactionBinaryArray) {
   return true;
 }
 
-bool Core::addTransactionToPool(CachedTransaction&& cachedTransaction) {
+bool Core::addTransactionToPool(const BinaryArray& transactionBinaryArray) {
+  bool rejectedBecauseAlreadyExisting;
+  return addTransactionToPool(transactionBinaryArray, rejectedBecauseAlreadyExisting);
+}
+
+bool Core::addTransactionToPool(CachedTransaction&& cachedTransaction, bool& rejectedBecauseAlreadyExisting) {
+  rejectedBecauseAlreadyExisting = false;
+
   TransactionValidatorState validatorState;
 
   if (!isTransactionValidForPool(cachedTransaction, validatorState)) {
@@ -917,12 +924,18 @@ bool Core::addTransactionToPool(CachedTransaction&& cachedTransaction) {
 
   auto transactionHash = cachedTransaction.getTransactionHash();
   if (!transactionPool->pushTransaction(std::move(cachedTransaction), std::move(validatorState))) {
+    rejectedBecauseAlreadyExisting = true;
     logger(Logging::DEBUGGING) << "Failed to push transaction " << transactionHash << " to pool, already exists";
     return false;
   }
 
   logger(Logging::DEBUGGING) << "Transaction " << transactionHash << " has been added to pool";
   return true;
+}
+
+bool Core::addTransactionToPool(CachedTransaction&& cachedTransaction) {
+  bool rejectedBecauseAlreadyExisting;
+  return addTransactionToPool(std::move(cachedTransaction), rejectedBecauseAlreadyExisting);
 }
 
 bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction, TransactionValidatorState& validatorState) {
@@ -1200,7 +1213,7 @@ std::error_code Core::validateTransaction(const CachedTransaction& cachedTransac
                                           IBlockchainCache* cache, uint64_t& fee, uint32_t blockIndex) {
   // TransactionValidatorState currentState;
   const auto& transaction = cachedTransaction.getTransaction();
-  auto error = validateSemantic(transaction, fee);
+auto error = validateSemantic(transaction, fee, blockIndex);
   if (error != error::TransactionValidationError::VALIDATION_SUCCESS) {
     return error;
   }
@@ -1257,7 +1270,7 @@ std::error_code Core::validateTransaction(const CachedTransaction& cachedTransac
   return error::TransactionValidationError::VALIDATION_SUCCESS;
 }
 
-std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t& fee) {
+std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t& fee, uint32_t blockIndex) {
   if (transaction.inputs.empty()) {
     return error::TransactionValidationError::EMPTY_INPUTS;
   }
@@ -1283,6 +1296,11 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
     summaryOutputAmount += output.amount;
   }
 
+    // parameters used for the additional key_image check
+    static const Crypto::KeyImage Z = { {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+    static const Crypto::KeyImage I = { {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+    static const Crypto::KeyImage L = { {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10 } };
+
   uint64_t summaryInputAmount = 0;
   std::unordered_set<Crypto::KeyImage> ki;
   std::set<std::pair<uint64_t, uint32_t>> outputsUsage;
@@ -1301,6 +1319,11 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 
       // outputIndexes are packed here, first is absolute, others are offsets to previous,
       // so first can be zero, others can't
+  // Fix discovered by Monero Lab and suggested by "fluffypony" (bitcointalk.org)
+  if (!(scalarmultKey(in.keyImage, L) == I) && blockIndex > parameters::KEY_IMAGE_CHECKING_BLOCK_INDEX) {
+    return error::TransactionValidationError::INPUT_INVALID_DOMAIN_KEYIMAGES;
+  }
+
       if (std::find(++std::begin(in.outputIndexes), std::end(in.outputIndexes), 0) != std::end(in.outputIndexes)) {
         return error::TransactionValidationError::INPUT_IDENTICAL_OUTPUT_INDEXES;
       }
@@ -2166,6 +2189,35 @@ std::vector<Crypto::Hash> Core::getTransactionHashesByPaymentId(const Hash& paym
   std::move(poolHashes.begin(), poolHashes.end(), std::back_inserter(hashes));
 
   return hashes;
+}
+
+bool Core::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) {
+  std::vector<Crypto::Hash> hashes = getTransactionHashesByPaymentId(paymentId);
+  std::vector<BinaryArray> txs;
+  std::vector<Crypto::Hash> missed_txs;
+
+  getTransactions(hashes, txs, missed_txs);
+
+  for(auto const& ba: txs) {
+    Transaction tx;
+    if (!fromBinaryArray(tx, ba)) {
+      throw std::runtime_error("Couldn't deserialize transaction");
+    }
+    transactions.push_back(tx);
+  }
+
+  // Also check pool
+  for(auto const& transactionHash: missed_txs) {
+    try {
+      const Transaction& tx = transactionPool->getTransaction(transactionHash).getTransaction();
+      transactions.push_back(tx);
+    } catch (std::exception& e) {
+      logger(Logging::ERROR) << "Error loading tx " << transactionHash << " from pool while searching for payment ID " << paymentId;
+      return false; // Not found??
+    }
+  }
+  
+  return true;
 }
 
 void Core::throwIfNotInitialized() const {

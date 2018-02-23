@@ -35,6 +35,9 @@ public:
   RpcServer(System::Dispatcher& dispatcher, Logging::ILogger& log, Core& c, NodeServer& p2p, ICryptoNoteProtocolHandler& protocol);
 
   typedef std::function<bool(RpcServer*, const HttpRequest& request, HttpResponse& response)> HandlerFunction;
+  bool enableCors(const std::string domains);
+  
+  bool restrictedRpc = false;
 
 private:
 
@@ -42,6 +45,7 @@ private:
   struct RpcHandler {
     const Handler handler;
     const bool allowBusyCore;
+    const bool forbiddenWhenRestricted;
   };
 
   typedef void (RpcServer::*HandlerPtr)(const HttpRequest& request, HttpResponse& response);
@@ -89,10 +93,13 @@ private:
   bool f_on_transaction_json(const F_COMMAND_RPC_GET_TRANSACTION_DETAILS::request& req, F_COMMAND_RPC_GET_TRANSACTION_DETAILS::response& res);
   bool f_on_transactions_pool_json(const F_COMMAND_RPC_GET_POOL::request& req, F_COMMAND_RPC_GET_POOL::response& res);
   bool f_getMixin(const Transaction& transaction, uint64_t& mixin);
+  bool k_on_transactions_by_payment_id(const K_COMMAND_RPC_GET_TRANSACTIONS_BY_PAYMENT_ID::request& req, K_COMMAND_RPC_GET_TRANSACTIONS_BY_PAYMENT_ID::response& res);
+
   Logging::LoggerRef logger;
   Core& m_core;
   NodeServer& m_p2p;
   ICryptoNoteProtocolHandler& m_protocol;
+  std::string m_cors_domains;
 };
 
 }

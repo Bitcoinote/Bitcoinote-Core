@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.8.6)
 
-set(VERSION "0.1")
-# $Format:Packaged from commit %H%nset(COMMIT %h)%nset(REFS "%d")$
+set(VERSION "1.1.0")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo Release CACHE TYPE INTERNAL)
@@ -12,7 +11,7 @@ enable_testing()
 # copy CTestCustom.cmake to build dir to disable long running tests in 'make test'
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake ${CMAKE_CURRENT_BINARY_DIR})
 
-project(Bytecoin)
+project(Bitcoinote)
 
 include_directories(include src external "${CMAKE_CURRENT_BINARY_DIR}/version")
 if(APPLE)
@@ -21,18 +20,25 @@ if(APPLE)
 endif()
 
 if(MSVC)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Windows)
+  add_definitions("/MP")
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Windows)
 elseif(APPLE)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/OSX)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/OSX)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
 else()
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Linux)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Linux)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
 endif()
 
 set(STATIC ${MSVC} CACHE BOOL "Link libraries statically")
 
+# Prevent a mess on Windows with incorrect build flags for conflicting gtest versions
+set(ROCKSDB_WITHOUT_GTEST ON CACHE BOOL "No gtest in rocksdb")
+
 if(MSVC)
+  # Ensure rocksdb is linked /MT
+  set(WITH_MD_LIBRARY 0)
+
   add_definitions("/bigobj /MP /W3 /GS- /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /D_VARIADIC_MAX=8 /D__SSE4_1__")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10485760")
   if(STATIC)
@@ -42,6 +48,7 @@ if(MSVC)
   endif()
   include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/msc)
 else()
+  
   if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     # This option has no effect in glibc version less than 2.20. 
     # Since glibc 2.20 _BSD_SOURCE is deprecated, this macro is recomended instead
@@ -53,7 +60,22 @@ else()
   else()
     set(ARCH_FLAG "-march=${ARCH}")
   endif()
-  set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Werror -Wno-error=extra -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+
+  execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+  MESSAGE( STATUS "CXX COMPILER VERSION: " ${GCC_VERSION} )
+  if (GCC_VERSION VERSION_GREATER 7.0)
+      MESSAGE( STATUS "GCC 7 or higher found, enabling extra compiler switches" )
+      set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Werror -Wno-error=stringop-overflow -Wno-error=extra -Wimplicit-fallthrough=2 -Wno-error=init-self -Wno-error=format-truncation -Wno-error=terminate -Wno-error=unused-const-variable -Wno-error=logical-op -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+  elseif(GCC_VERSION VERSION_GREATER 6.0)
+      # Hotfixes for GCC 6+
+      add_definitions("-Wimplicit-fallthrough=0 -Werror=format-truncation=0")
+      MESSAGE( STATUS "GCC 6 found, enabling extra compiler switches" )
+      set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Werror -Wno-error=extra -Wno-error=init-self -Wno-error=terminate -Wno-error=unused-const-variable -Wno-error=logical-op -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+  else()
+      set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Werror -Wno-error=extra -Wno-error=logical-op -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+  endif()
+
   if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set(WARNINGS "${WARNINGS} -Wno-error=mismatched-tags -Wno-error=null-conversion -Wno-overloaded-shift-op-parentheses -Wno-error=shift-count-overflow -Wno-error=tautological-constant-out-of-range-compare -Wno-error=unused-private-field -Wno-error=unneeded-internal-declaration -Wno-error=unused-function -Wno-error=missing-braces")
   else()
@@ -69,6 +91,10 @@ else()
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT (CMAKE_C_COMPILER_VERSION VERSION_LESS 5.1))
     set(WARNINGS "${WARNINGS} -Wno-error=odr")
   endif()
+  if(NO_WARNINGS)
+    set(WARNINGS "${WARNINGS} -w")
+  endif()
+  
   set(C_WARNINGS "-Waggregate-return -Wnested-externs -Wold-style-definition -Wstrict-prototypes")
   set(CXX_WARNINGS "-Wno-reorder -Wno-missing-field-initializers")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 ${MINGW_FLAG} ${WARNINGS} ${C_WARNINGS} ${ARCH_FLAG} -maes")
@@ -130,7 +156,7 @@ if (NOT COMMIT_ID_IN_VERSION)
 elseif(DEFINED COMMIT)
   string(REPLACE "." "\\." VERSION_RE "${VERSION}")
   if(NOT REFS MATCHES "(\\(|, )tag: v${VERSION_RE}(\\)|, )")
-    set(VERSION "${VERSION}-g${COMMIT}")
+    set(VERSION "${VERSION}-${GIT_BRANCH}-g${COMMIT}")
   endif()
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
   add_custom_target(version ALL)

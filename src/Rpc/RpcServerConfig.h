@@ -33,6 +33,7 @@ public:
 
   std::string bindIp;
   uint16_t bindPort;
+  bool restrictedRpc;
 };
 
 }

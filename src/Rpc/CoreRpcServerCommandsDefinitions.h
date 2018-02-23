@@ -609,6 +609,27 @@ struct F_COMMAND_RPC_GET_POOL {
     }
   };
 };
+
+struct K_COMMAND_RPC_GET_TRANSACTIONS_BY_PAYMENT_ID {
+  struct request {
+    std::string payment_id;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(payment_id)
+    }
+  };
+
+  struct response {
+    std::vector<f_transaction_short_response> transactions;
+    std::string status;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(transactions)
+      KV_MEMBER(status)
+    }
+  };
+};
+
 struct COMMAND_RPC_QUERY_BLOCKS {
   struct request {
     std::vector<Crypto::Hash> block_ids; //*first 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */

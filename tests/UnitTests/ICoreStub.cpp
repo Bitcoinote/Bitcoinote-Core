@@ -282,9 +282,14 @@ bool ICoreStub::getRandomOutputs(uint64_t amount, uint16_t count, std::vector<ui
   return randomOutsResult;
 }
 
-bool ICoreStub::addTransactionToPool(const CryptoNote::BinaryArray& transactionBinaryArray) {
+bool ICoreStub::addTransactionToPool(const CryptoNote::BinaryArray& transactionBinaryArray, bool& rejectedIfAlreadyExisting) {
   transactionPool.emplace(CryptoNote::getBinaryArrayHash(transactionBinaryArray), transactionBinaryArray);
   return true;
+}
+
+bool ICoreStub::addTransactionToPool(const CryptoNote::BinaryArray& transactionBinaryArray) {
+  bool rejectedIfAlreadyExisting;
+  return addTransactionToPool(transactionBinaryArray, rejectedIfAlreadyExisting);
 }
 
 std::vector<Crypto::Hash> ICoreStub::getPoolTransactionHashes() const {

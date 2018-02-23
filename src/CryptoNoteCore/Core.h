@@ -86,6 +86,7 @@ public:
   virtual bool getTransactionGlobalIndexes(const Crypto::Hash& transactionHash, std::vector<uint32_t>& globalIndexes) const override;
   virtual bool getRandomOutputs(uint64_t amount, uint16_t count, std::vector<uint32_t>& globalIndexes, std::vector<Crypto::PublicKey>& publicKeys) const override;
 
+  virtual bool addTransactionToPool(const BinaryArray& transactionBinaryArray, bool& rejectedIfAlreadyExisting) override;
   virtual bool addTransactionToPool(const BinaryArray& transactionBinaryArray) override;
 
   virtual std::vector<Crypto::Hash> getPoolTransactionHashes() const override;
@@ -116,6 +117,7 @@ public:
   virtual std::vector<Crypto::Hash> getAlternativeBlockHashesByIndex(uint32_t blockIndex) const override;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const override;
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const override;
+  virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) override;
 
 private:
   const Currency& currency;
@@ -142,7 +144,7 @@ private:
   void throwIfNotInitialized() const;
   bool extractTransactions(const std::vector<BinaryArray>& rawTransactions, std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize);
 
-  std::error_code validateSemantic(const Transaction& transaction, uint64_t& fee);
+  std::error_code validateSemantic(const Transaction& transaction, uint64_t& fee, uint32_t blockIndex);
   std::error_code validateTransaction(const CachedTransaction& transaction, TransactionValidatorState& state, IBlockchainCache* cache, uint64_t& fee, uint32_t blockIndex);
   
   uint32_t findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds) const;
@@ -192,6 +194,7 @@ private:
   void transactionPoolCleaningProcedure();
   void updateBlockMedianSize();
   bool addTransactionToPool(CachedTransaction&& cachedTransaction);
+  bool addTransactionToPool(CachedTransaction&& cachedTransaction, bool& rejectedIfAlreadyExisting);
   bool isTransactionValidForPool(const CachedTransaction& cachedTransaction, TransactionValidatorState& validatorState);
 
   void initRootSegment();

@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
+#include <CryptoNote.h>
 
 #include <boost/bimap.hpp>
 
@@ -57,6 +58,7 @@ public:
   virtual void getBlocks(const std::vector<Crypto::Hash>& blockHashes, std::vector<CryptoNote::RawBlock>& blocks, std::vector<Crypto::Hash>& missedHashes) const override;
   virtual bool getRandomOutputs(uint64_t amount, uint16_t count, std::vector<uint32_t>& globalIndexes, std::vector<Crypto::PublicKey>& publicKeys) const override;
   virtual bool addTransactionToPool(const CryptoNote::BinaryArray& transactionBinaryArray) override;
+  virtual bool addTransactionToPool(const CryptoNote::BinaryArray& transactionBinaryArray, bool& rejectedIfAlreadyExisting) override;
   virtual std::vector<Crypto::Hash> getPoolTransactionHashes() const override;
   virtual bool getBlockTemplate(CryptoNote::BlockTemplate& b, const CryptoNote::AccountPublicAddress& adr, const CryptoNote::BinaryArray& extraNonce, CryptoNote::Difficulty& difficulty, uint32_t& height) const override;
 
@@ -103,6 +105,7 @@ public:
   virtual std::vector<Crypto::Hash> getAlternativeBlockHashesByIndex(uint32_t blockIndex) const override;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const override { return {};}
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const override { return {}; }
+  virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<CryptoNote::Transaction>& transactions) override { return true; };
 
 private:
   uint32_t topHeight;

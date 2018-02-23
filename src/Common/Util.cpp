@@ -19,6 +19,7 @@
 #include <cstdio>
 
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/replace.hpp>
 
 #include "CryptoNoteConfig.h"
 
@@ -289,13 +290,36 @@ std::string get_nix_version_display_string()
   std::string get_special_folder_path(int nfolder, bool iscreate)
   {
     namespace fs = boost::filesystem;
-    char psz_path[MAX_PATH] = "";
+    wchar_t path[MAX_PATH + 1] = L"";
+    wchar_t shortPath[MAX_PATH + 1] = L"";
+    char shortPathAnsi[2 * MAX_PATH + 2] = "";
 
-    if(SHGetSpecialFolderPathA(NULL, psz_path, nfolder, iscreate)) {
-      return psz_path;
+    // Ensure that special folder paths with non-ANSI characters will still
+    // work properly (by converting to a 8.3 name first if needed)
+
+    if(nfolder == CSIDL_APPDATA) {
+      // Special case for application data to allow overriding
+      // The appdata dirname should exist normally both as enrivonment variable
+      // and as special folder
+      if(!GetEnvironmentVariableW(L"APPDATA", path, sizeof(path))) return "";
+    } else {
+      if(!SHGetSpecialFolderPathW(NULL, path, nfolder, iscreate)) return "";
     }
+    bool containsNonAnsi = false;
+    for(int i = 0; i < wcslen(path); i++) {
+      if(path[i] & 0x80) {
+        containsNonAnsi = true;
+        break;
+      }
+    }
+    if(containsNonAnsi) {
+      if(!GetShortPathNameW(path, shortPath, sizeof(shortPath))) return "";
+    } else {
+      CopyMemory(shortPath, path, sizeof(shortPath));
+    }
+    if(!WideCharToMultiByte(CP_ACP, 0, shortPath, wcslen(shortPath) + 1, shortPathAnsi, sizeof(shortPathAnsi), NULL, NULL)) return "";
 
-    return "";
+    return shortPathAnsi;
   }
 #endif
 
@@ -379,9 +403,21 @@ std::string get_nix_version_display_string()
     return std::error_code(code, std::system_category());
   }
 
+  // Migrate users from the old data directory "Bitcoinote" to the new one "BitcoiNote" by creating a symlink
+  // Necessary (and possible) on UNIX only
+  void createDataDirSymlinkIfNecessary() {
+#if not defined(WIN32)
+    std::string newDataDir = getDefaultDataDirectory();
+    std::string oldDataDir = boost::replace_all_copy<std::string>(newDataDir, CryptoNote::CRYPTONOTE_NAME, "Bitcoinote");
+    if(directoryExists(oldDataDir) && !directoryExists(newDataDir)) {
+      boost::filesystem::create_symlink(oldDataDir, newDataDir);
+    }
+#endif
+  }
+
   bool directoryExists(const std::string& path) {
     boost::system::error_code ec;
-    return boost::filesystem::is_directory(path, ec);
+    return boost::filesystem::is_directory(path, ec) || (boost::filesystem::is_symlink(path, ec) && boost::filesystem::is_directory(boost::filesystem::canonical(path)));
   }
 
 }
