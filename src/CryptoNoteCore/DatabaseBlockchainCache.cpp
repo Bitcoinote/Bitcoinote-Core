@@ -1038,6 +1038,14 @@ uint32_t DatabaseBlockchainCache::getTopBlockIndex() const {
   return *topBlockIndex;
 }
 
+uint8_t DatabaseBlockchainCache::getBlockMajorVersionForHeight(uint32_t height) const {
+  UpgradeManager upgradeManager;
+  upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
+  upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
+  upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
+  return upgradeManager.getBlockMajorVersion(height);
+}
+
 uint64_t DatabaseBlockchainCache::getCachedTransactionsCount() const {
   if (!transactionsCount) {
     auto batch = BlockchainReadBatch().requestTransactionsCount();
@@ -1120,16 +1128,17 @@ std::vector<Difficulty> DatabaseBlockchainCache::getLastCumulativeDifficulties(s
   return getLastCumulativeDifficulties(count, getTopBlockIndex(), UseGenesis{true});
 }
 
-Difficulty DatabaseBlockchainCache::getDifficultyForNextBlock() const {
-  return getDifficultyForNextBlock(getTopBlockIndex());
+Difficulty DatabaseBlockchainCache::getDifficultyForNextBlock(uint64_t nextBlockTimestamp) const {
+  return getDifficultyForNextBlock(getTopBlockIndex(), nextBlockTimestamp);
 }
 
-Difficulty DatabaseBlockchainCache::getDifficultyForNextBlock(uint32_t blockIndex) const {
+Difficulty DatabaseBlockchainCache::getDifficultyForNextBlock(uint32_t blockIndex, uint64_t nextBlockTimestamp) const {
   assert(blockIndex <= getTopBlockIndex());
-  auto timestamps = getLastTimestamps(currency.difficultyBlocksCount(), blockIndex, UseGenesis{false});
+  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(blockIndex + 1);
+  auto timestamps = getLastTimestamps(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion), blockIndex, UseGenesis{false});
   auto commulativeDifficulties =
-      getLastCumulativeDifficulties(currency.difficultyBlocksCount(), blockIndex, UseGenesis{false});
-  return currency.nextDifficulty(std::move(timestamps), std::move(commulativeDifficulties));
+      getLastCumulativeDifficulties(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion), blockIndex, UseGenesis{false});
+  return currency.nextDifficulty(nextBlockMajorVersion, blockIndex, std::move(timestamps), std::move(commulativeDifficulties), nextBlockTimestamp);
 }
 
 Difficulty DatabaseBlockchainCache::getCurrentCumulativeDifficulty() const {

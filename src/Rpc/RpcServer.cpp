@@ -449,7 +449,7 @@ bool RpcServer::onGetTransactionHashesByPaymentId(const COMMAND_RPC_GET_TRANSACT
 
 bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_GET_INFO::response& res) {
   res.height = m_core.getTopBlockIndex() + 1;
-  res.difficulty = m_core.getDifficultyForNextBlock();
+  res.difficulty = m_core.getDifficultyForNextBlock(time(nullptr));
   res.tx_count = m_core.getBlockchainTransactionCount() - res.height; //without coinbase
   res.tx_pool_size = m_core.getPoolTransactionCount();
   res.alt_blocks_count = m_core.getAlternativeBlockCount();

@@ -315,7 +315,7 @@ void ICoreStub::load() {
   assert(false);
 }
 
-CryptoNote::Difficulty ICoreStub::getDifficultyForNextBlock() const {
+CryptoNote::Difficulty ICoreStub::getDifficultyForNextBlock(uint64_t nextBlockTimestamp) const {
   assert(false);
   return 0;
 }

@@ -38,6 +38,7 @@ const command_line::arg_descriptor<std::vector<std::string> > arg_p2p_add_exclus
       " If this option is given the options add-priority-node and seed-node are ignored"};
 const command_line::arg_descriptor<std::vector<std::string> > arg_p2p_seed_node   = {"seed-node", "Connect to a node to retrieve peer addresses, and disconnect"};
 const command_line::arg_descriptor<bool> arg_p2p_hide_my_port   =    {"hide-my-port", "Do not announce yourself as peerlist candidate", false, true};
+const command_line::arg_descriptor<bool> arg_p2p_no_default_seeds   =    {"no-default-seeds", "Do not use default seed nodes", false, true};
 
 bool parsePeerFromString(NetworkAddress& pe, const std::string& node_addr) {
   return Common::parseIpAddressAndPort(pe.ip, pe.port, node_addr);
@@ -71,6 +72,7 @@ void NetNodeConfig::initOptions(boost::program_options::options_description& des
   command_line::add_arg(desc, arg_p2p_add_exclusive_node);
   command_line::add_arg(desc, arg_p2p_seed_node);
   command_line::add_arg(desc, arg_p2p_hide_my_port);
+  command_line::add_arg(desc, arg_p2p_no_default_seeds);
 }
 
 NetNodeConfig::NetNodeConfig() {
@@ -79,6 +81,7 @@ NetNodeConfig::NetNodeConfig() {
   externalPort = 0;
   allowLocalIp = false;
   hideMyPort = false;
+  noDefaultSeeds = false;
   configFolder = Tools::getDefaultDataDirectory();
   testnet = false;
 }
@@ -139,6 +142,10 @@ bool NetNodeConfig::init(const boost::program_options::variables_map& vm)
     hideMyPort = true;
   }
 
+  if (command_line::has_arg(vm, arg_p2p_no_default_seeds)) {
+    noDefaultSeeds = true;
+  }
+
   return true;
 }
 
@@ -194,6 +201,10 @@ bool NetNodeConfig::getHideMyPort() const {
   return hideMyPort;
 }
 
+bool NetNodeConfig::getNoDefaultSeeds() const {
+  return noDefaultSeeds;
+}
+
 std::string NetNodeConfig::getConfigFolder() const {
   return configFolder;
 }
@@ -236,6 +247,10 @@ void NetNodeConfig::setSeedNodes(const std::vector<NetworkAddress>& addresses) {
 
 void NetNodeConfig::setHideMyPort(bool hide) {
   hideMyPort = hide;
+}
+
+void NetNodeConfig::setNoDefaultSeeds(bool b) {
+  noDefaultSeeds = b;
 }
 
 void NetNodeConfig::setConfigFolder(const std::string& folder) {

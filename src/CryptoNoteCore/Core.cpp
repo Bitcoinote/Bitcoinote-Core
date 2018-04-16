@@ -19,6 +19,7 @@
 #include <numeric>
 #include <set>
 #include <unordered_set>
+#include <iostream>
 
 #include "Core.h"
 #include "Common/ShuffleGenerator.h"
@@ -111,6 +112,7 @@ size_t getMaximumTransactionAllowedSize(size_t blockSizeMedian, const Currency& 
 BlockTemplate extractBlockTemplate(const RawBlock& block) {
   BlockTemplate blockTemplate;
   if (!fromBinaryArray(blockTemplate, block.block)) {
+    std::cout << "Couldn't deserialize raw block (extractBlockTemplate)" << std::endl;
     throw std::system_error(make_error_code(error::AddBlockErrorCode::DESERIALIZATION_FAILED));
   }
 
@@ -198,6 +200,7 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
 
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
+  upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
 
   transactionPool = std::unique_ptr<ITransactionPoolCleanWrapper>(new TransactionPoolCleanWrapper(
     std::unique_ptr<ITransactionPool>(new TransactionPool(logger)),
@@ -421,6 +424,13 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
     currentIndex = mainChain->getTopBlockIndex();
 
     startIndex = findBlockchainSupplement(knownBlockHashes); // throws
+    if (startIndex > 0 && timestamp == 0) {
+        if (startIndex <= mainChain->getTopBlockIndex()) {
+            RawBlock block = mainChain->getBlockByIndex(startIndex);
+            auto blockTemplate = extractBlockTemplate(block);
+            timestamp = blockTemplate.timestamp;
+        }
+    }
 
     fullOffset = mainChain->getTimestampLowerBoundBlockIndex(timestamp);
     if (fullOffset < startIndex) {
@@ -436,8 +446,8 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
     fillQueryBlockShortInfo(fullOffset, currentIndex, BLOCKS_SYNCHRONIZING_DEFAULT_COUNT, entries);
 
     return true;
-  } catch (std::exception&) {
-    // TODO log
+  } catch (std::exception& e) {
+      logger(Logging::ERROR) << "Failed to query blocks: " << e.what();
     return false;
   }
 }
@@ -495,18 +505,20 @@ Difficulty Core::getBlockDifficulty(uint32_t blockIndex) const {
 }
 
 // TODO: just use mainChain->getDifficultyForNextBlock() ?
-Difficulty Core::getDifficultyForNextBlock() const {
+Difficulty Core::getDifficultyForNextBlock(uint64_t nextBlockTimestamp) const {
   throwIfNotInitialized();
   IBlockchainCache* mainChain = chainsLeaves[0];
 
   uint32_t topBlockIndex = mainChain->getTopBlockIndex();
 
-  size_t blocksCount = std::min(static_cast<size_t>(topBlockIndex), currency.difficultyBlocksCount());
+  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(topBlockIndex + 1);
+
+  size_t blocksCount = std::min(static_cast<size_t>(topBlockIndex), currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion));
 
   auto timestamps = mainChain->getLastTimestamps(blocksCount);
   auto difficulties = mainChain->getLastCumulativeDifficulties(blocksCount);
 
-  return currency.nextDifficulty(timestamps, difficulties);
+  return currency.nextDifficulty(nextBlockMajorVersion, topBlockIndex, timestamps, difficulties, nextBlockTimestamp);
 }
 
 std::vector<Crypto::Hash> Core::findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds,
@@ -570,7 +582,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     return blockValidationResult;
   }
 
-  auto currentDifficulty = cache->getDifficultyForNextBlock(previousBlockIndex);
+  auto currentDifficulty = cache->getDifficultyForNextBlock(previousBlockIndex, cachedBlock.getBlock().timestamp);
   if (currentDifficulty == 0) {
     logger(Logging::DEBUGGING) << "Block " << cachedBlock.getBlockHash() << " has difficulty overhead";
     return error::BlockValidationError::DIFFICULTY_OVERHEAD;
@@ -791,6 +803,7 @@ std::error_code Core::addBlock(RawBlock&& rawBlock) {
   BlockTemplate blockTemplate;
   bool result = fromBinaryArray(blockTemplate, rawBlock.block);
   if (!result) {
+    logger(Logging::WARNING) << "Couldn't deserialize raw block (addBlock)";
     return error::AddBlockErrorCode::DESERIALIZATION_FAILED;
   }
 
@@ -1012,13 +1025,15 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   throwIfNotInitialized();
 
   height = getTopBlockIndex() + 1;
-  difficulty = getDifficultyForNextBlock();
+  b = boost::value_initialized<BlockTemplate>();
+  b.timestamp = time(nullptr);
+
+  difficulty = getDifficultyForNextBlock(b.timestamp);
   if (difficulty == 0) {
     logger(Logging::ERROR, Logging::BRIGHT_RED) << "difficulty overhead.";
     return false;
   }
 
-  b = boost::value_initialized<BlockTemplate>();
   b.majorVersion = getBlockMajorVersionForHeight(height);
 
   if (b.majorVersion == BLOCK_MAJOR_VERSION_1) {
@@ -1031,7 +1046,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
     }
 
     b.parentBlock.majorVersion = BLOCK_MAJOR_VERSION_1;
-    b.parentBlock.majorVersion = BLOCK_MINOR_VERSION_0;
+    b.parentBlock.minorVersion = BLOCK_MINOR_VERSION_0;
     b.parentBlock.transactionCount = 1;
 
     TransactionExtraMergeMiningTag mmTag = boost::value_initialized<decltype(mmTag)>();
@@ -1043,7 +1058,6 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   }
 
   b.previousBlockHash = getTopBlockHash();
-  b.timestamp = time(nullptr);
 
   size_t medianSize = calculateCumulativeBlocksizeLimit(height) / 2;
 
@@ -1370,7 +1384,9 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
 
   minerReward = 0;
 
-  if (upgradeManager->getBlockMajorVersion(cachedBlock.getBlockIndex()) != block.majorVersion) {
+  uint8_t expectedVerison = upgradeManager->getBlockMajorVersion(cachedBlock.getBlockIndex());
+  if (expectedVerison != block.majorVersion) {
+    logger(Logging::ERROR, Logging::BRIGHT_RED) << "Block " << cachedBlock.getBlockHash() << " has version " << (uint64_t)block.majorVersion << ", expected" << (uint64_t)expectedVerison;
     return error::BlockValidationError::WRONG_VERSION;
   }
 
@@ -1482,6 +1498,21 @@ void Core::load() {
     logger(Logging::DEBUGGING) << "Blockchain storage and root segment are on the same height and chain";
   }
 
+  // Validate checkpoints
+  for (const auto& cp : CryptoNote::CHECKPOINTS) {
+    Crypto::Hash h = NULL_HASH;
+    if (!Common::podFromHex(cp.blockId, h)) {
+      logger(Logging::ERROR, Logging::BRIGHT_RED) << "WRONG HASH IN CHECKPOINTS!!!";
+      throw std::system_error(make_error_code(error::CoreErrorCode::CORRUPTED_BLOCKCHAIN));
+    }
+    if (cp.index > chainsLeaves[0]->getTopBlockIndex()) continue;
+    Crypto::Hash actualHash = chainsLeaves[0]->getBlockHash(cp.index);
+    if (actualHash != h) {
+      logger(Logging::ERROR, Logging::BRIGHT_RED) << "Invalid block in database: " << cp.index << " - hash " << actualHash << " does not equal checkpoint hash " << h << " (you may need to delete blockchain folder and resync)";
+      throw std::system_error(make_error_code(error::CoreErrorCode::CORRUPTED_BLOCKCHAIN));
+    }
+  }
+
   initialized = true;
 }
 
@@ -1531,7 +1562,7 @@ void Core::importBlocksFromStorage() {
 
     cumulativeSize += getObjectBinarySize(blockTemplate.baseTransaction);
     TransactionValidatorState spentOutputs = extractSpentOutputs(transactions);
-    auto currentDifficulty = chainsLeaves[0]->getDifficultyForNextBlock(i - 1);
+    auto currentDifficulty = chainsLeaves[0]->getDifficultyForNextBlock(i - 1, cachedBlock.getBlock().timestamp);
 
     uint64_t cumulativeFee = std::accumulate(transactions.begin(), transactions.end(), UINT64_C(0), [] (uint64_t fee, const CachedTransaction& transaction) {
       return fee + transaction.getTransactionFee();

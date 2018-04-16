@@ -72,7 +72,7 @@ public:
                                std::vector<Crypto::Hash>& missedHashes) const = 0;
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const = 0;
-  virtual Difficulty getDifficultyForNextBlock() const = 0;
+  virtual Difficulty getDifficultyForNextBlock(uint64_t nextBlockTimestamp) const = 0;
 
   virtual std::error_code addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlock) = 0;
   virtual std::error_code addBlock(RawBlock&& rawBlock) = 0;

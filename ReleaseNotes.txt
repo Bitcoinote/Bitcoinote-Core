@@ -1,3 +1,16 @@
+Release notes 1.2.0
+
+- HARD FORK: Starting after block height 70913, block version 4 is used
+- LWMA difficulty algorithm (by zawy12)
+- Emergency difficulty recovery - in case the network is stuck for a long time (despite the new algorithm), it is possible to submit blocks with lower difficulty to kick-start the network again
+- Checkpoints (70000, 70195, 70920)
+- Fix portable compiling on Linux
+- Allow much bigger block size
+- Faster blockchain syncing
+- Checkpoints are checked against blocks in database on daemon startup
+- Various smaller fixes and better error output
+- Fix bug that wallet synchronization could get stuck
+
 Release notes 1.1.0
 
 - Support for GCC 6+

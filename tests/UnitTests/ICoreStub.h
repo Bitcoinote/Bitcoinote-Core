@@ -49,7 +49,7 @@ public:
   virtual uint64_t getBlockTimestampByIndex(uint32_t blockIndex) const override;
   virtual CryptoNote::BlockTemplate getBlockByIndex(uint32_t index) const override;
   
-  virtual CryptoNote::Difficulty getDifficultyForNextBlock() const override;
+  virtual CryptoNote::Difficulty getDifficultyForNextBlock(uint64_t nextBlockTimestamp) const override;
   virtual std::error_code addBlock(const CryptoNote::CachedBlock& cachedBlock, CryptoNote::RawBlock&& rawBlock) override;
   virtual std::error_code addBlock(CryptoNote::RawBlock&& rawBlock) override;
   virtual std::error_code submitBlock(CryptoNote::BinaryArray&& rawBlockTemplate) override;

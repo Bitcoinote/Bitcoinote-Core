@@ -33,6 +33,7 @@
 #include "Currency.h"
 #include "Difficulty.h"
 #include "IBlockchainCache.h"
+#include "CryptoNoteCore/UpgradeManager.h"
 
 namespace CryptoNote {
 
@@ -134,8 +135,8 @@ public:
   std::vector<Difficulty> getLastCumulativeDifficulties(size_t count, uint32_t blockIndex, UseGenesis) const override;
   std::vector<Difficulty> getLastCumulativeDifficulties(size_t count) const override;
 
-  Difficulty getDifficultyForNextBlock() const override;
-  Difficulty getDifficultyForNextBlock(uint32_t blockIndex) const override;
+  Difficulty getDifficultyForNextBlock(uint64_t nextBlockIndex) const override;
+  Difficulty getDifficultyForNextBlock(uint32_t blockIndex, uint64_t nextBlockTimestamp) const override;
 
   virtual Difficulty getCurrentCumulativeDifficulty() const override;
   virtual Difficulty getCurrentCumulativeDifficulty(uint32_t blockIndex) const override;
@@ -159,6 +160,7 @@ public:
   virtual bool getTransactionGlobalIndexes(const Crypto::Hash& transactionHash, std::vector<uint32_t>& globalIndexes) const override;
   virtual size_t getTransactionCount() const override;
   virtual uint32_t getBlockIndexContainingTx(const Crypto::Hash& transactionHash) const override;
+  virtual uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
 
   virtual size_t getChildCount() const override;
   virtual void addChild(IBlockchainCache* child) override;

@@ -18,6 +18,7 @@
 #pragma once
 
 #include <limits>
+#include <iostream>
 #include "Common/MemoryInputStream.h"
 #include "Common/StringTools.h"
 #include "Common/VectorOutputStream.h"
@@ -74,7 +75,8 @@ template<class T>
 bool fromBinaryArray(T& object, const BinaryArray& binaryArray) {
   try {
     object = fromBinaryArray<T>(binaryArray);
-  } catch (std::exception&) {
+  } catch (std::exception& e) {
+    std::cout << "fromBinaryArray failed: " << e.what();
     return false;
   }
 

@@ -579,8 +579,9 @@ BlockchainSynchronizer::UpdateConsumersResult BlockchainSynchronizer::updateCons
       kv.second->detach(result.detachHeight);
     }
 
+    uint32_t startOffset = result.newBlockHeight - interval.startHeight;
+
     if (result.hasNewBlocks) {
-      uint32_t startOffset = result.newBlockHeight - interval.startHeight;
       uint32_t blockCount = static_cast<uint32_t>(blocks.size()) - startOffset;
       // update consumer
       m_logger(DEBUGGING) << "Adding blocks to consumer, consumer " << kv.first << ", start index " << result.newBlockHeight << ", count " << blockCount;
@@ -599,9 +600,11 @@ BlockchainSynchronizer::UpdateConsumersResult BlockchainSynchronizer::updateCons
         hasErrors = true;
       }
 
-      if (addedCount > 0) {
+      if (addedCount >= 0 && !hasErrors) { // Also set if nothing was added (unless there were errors)
         lastBlockIndex = std::min(lastBlockIndex, startOffset + addedCount - 1);
       }
+    } else { // Also set if no new blocks were found, to avoid infinite loops (between pool and BC sync) when lastBlockIndex was never properly initialized
+      lastBlockIndex = std::min(lastBlockIndex, startOffset - 1);
     }
   }
 

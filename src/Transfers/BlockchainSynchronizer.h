@@ -135,7 +135,7 @@ private:
   INode& m_node;
   const Crypto::Hash m_genesisBlockHash;
 
-  Crypto::Hash lastBlockId;
+  Crypto::Hash lastBlockId = {{0}}; // Ensure proper initialization, otherwise it contains garbage!
 
   State m_currentState;
   State m_futureState;

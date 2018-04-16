@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.6)
 
-set(VERSION "1.1.0")
+set(VERSION "1.2.0")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo Release CACHE TYPE INTERNAL)
@@ -48,13 +48,15 @@ if(MSVC)
   endif()
   include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/msc)
 else()
-  
   if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     # This option has no effect in glibc version less than 2.20. 
     # Since glibc 2.20 _BSD_SOURCE is deprecated, this macro is recomended instead
     add_definitions("-D_DEFAULT_SOURCE -D_GNU_SOURCE")
   endif()
   set(ARCH native CACHE STRING "CPU to build for: -march value or default")
+  if(PORTABLE)
+    set(ARCH "nehalem")
+  endif()
   if("${ARCH}" STREQUAL "default")
     set(ARCH_FLAG "")
   else()

@@ -21,6 +21,7 @@
 #include "Currency.h"
 #include "Difficulty.h"
 #include "IBlockchainCache.h"
+#include "CryptoNoteCore/UpgradeManager.h"
 #include <IDataBase.h>
 #include <CryptoNoteCore/BlockchainReadBatch.h>
 #include <CryptoNoteCore/BlockchainWriteBatch.h>
@@ -95,8 +96,8 @@ public:
   std::vector<Difficulty> getLastCumulativeDifficulties(size_t count, uint32_t blockIndex, UseGenesis) const override;
   std::vector<Difficulty> getLastCumulativeDifficulties(size_t count) const override;
 
-  Difficulty getDifficultyForNextBlock() const override;
-  Difficulty getDifficultyForNextBlock(uint32_t blockIndex) const override;
+  Difficulty getDifficultyForNextBlock(uint64_t nextBlockTimestamp) const override;
+  Difficulty getDifficultyForNextBlock(uint32_t blockIndex, uint64_t nextBlockTimestamp) const override;
 
   virtual Difficulty getCurrentCumulativeDifficulty() const override;
   virtual Difficulty getCurrentCumulativeDifficulty(uint32_t blockIndex) const override;
@@ -205,6 +206,7 @@ private:
   void requestDeleteKeyOutputsAmount(BlockchainWriteBatch& writeBatch, IBlockchainCache::Amount amount, IBlockchainCache::GlobalOutputIndex boundary, uint32_t outputsCount);
   void requestRemoveTimestamp(BlockchainWriteBatch& batch, uint64_t timestamp, const Crypto::Hash& blockHash);
 
+  uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
   uint64_t getCachedTransactionsCount() const;
 
   std::vector<CachedBlockInfo> getLastCachedUnits(uint32_t blockIndex, size_t count, UseGenesis useGenesis) const;

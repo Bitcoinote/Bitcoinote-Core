@@ -120,6 +120,7 @@ const command_line::arg_descriptor<std::vector<std::string> > arg_p2p_add_exclus
                                                                                               " If this option is given the options add-priority-node and seed-node are ignored"};
 const command_line::arg_descriptor<std::vector<std::string> > arg_p2p_seed_node   = {"seed-node", "Connect to a node to retrieve peer addresses, and disconnect"};
 const command_line::arg_descriptor<bool> arg_p2p_hide_my_port   =    {"hide-my-port", "Do not announce yourself as peerlist candidate", false, true};
+const command_line::arg_descriptor<bool> arg_p2p_no_default_seeds   =    {"no-default-seeds", "Do not use default seed nodes", false, true};
 
 std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
   time_t now_time = 0;
@@ -205,6 +206,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     m_payload_handler(payload_handler),
     m_allow_local_ip(false),
     m_hide_my_port(false),
+    m_no_default_seeds(false),
     m_network_id(BYTECOIN_NETWORK),
     logger(log, "node_server"),
     m_stopEvent(m_dispatcher),
@@ -277,6 +279,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     command_line::add_arg(desc, arg_p2p_add_exclusive_node);
     command_line::add_arg(desc, arg_p2p_seed_node);    
     command_line::add_arg(desc, arg_p2p_hide_my_port);
+    command_line::add_arg(desc, arg_p2p_no_default_seeds);
   }
   //-----------------------------------------------------------------------------------
   
@@ -382,6 +385,10 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
       m_hide_my_port = true;
     }
 
+    if (command_line::has_arg(vm, arg_p2p_no_default_seeds)) {
+      m_no_default_seeds = true;
+    }
+
     return true;
   }
 
@@ -404,6 +411,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     std::copy(seedNodes.begin(), seedNodes.end(), std::back_inserter(m_seed_nodes));
 
     m_hide_my_port = config.getHideMyPort();
+    m_no_default_seeds = config.getNoDefaultSeeds();
     return true;
   }
 
@@ -438,8 +446,12 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
   
   bool NodeServer::init(const NetNodeConfig& config) {
     if (!config.getTestnet()) {
-      for (auto seed : CryptoNote::SEED_NODES) {
-        append_net_address(m_seed_nodes, seed);
+      if (!config.getNoDefaultSeeds()) {
+        for (auto seed : CryptoNote::SEED_NODES) {
+          append_net_address(m_seed_nodes, seed);
+        }
+      } else {
+        logger(INFO) << "No default seeds used";
       }
     } else {
       m_network_id.data[0] += 1;

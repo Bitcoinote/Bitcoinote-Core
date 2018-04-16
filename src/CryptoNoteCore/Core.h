@@ -76,7 +76,7 @@ public:
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<BinaryArray>& transactions, std::vector<Crypto::Hash>& missedHashes) const override;
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const override;
-  virtual Difficulty getDifficultyForNextBlock() const override;
+  virtual Difficulty getDifficultyForNextBlock(uint64_t nextBlockTimestamp) const override;
 
   virtual std::error_code addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlock) override;
   virtual std::error_code addBlock(RawBlock&& rawBlock) override;

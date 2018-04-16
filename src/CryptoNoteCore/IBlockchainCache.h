@@ -128,8 +128,8 @@ public:
   virtual std::vector<Difficulty> getLastCumulativeDifficulties(size_t count, uint32_t blockIndex, UseGenesis) const = 0;
   virtual std::vector<Difficulty> getLastCumulativeDifficulties(size_t count) const = 0;
 
-  virtual Difficulty getDifficultyForNextBlock() const = 0;
-  virtual Difficulty getDifficultyForNextBlock(uint32_t blockIndex) const = 0;
+  virtual Difficulty getDifficultyForNextBlock(uint64_t nextBlockTimestamp) const = 0;
+  virtual Difficulty getDifficultyForNextBlock(uint32_t blockIndex, uint64_t nextBlockTimestamp) const = 0;
 
   virtual Difficulty getCurrentCumulativeDifficulty() const = 0;
   virtual Difficulty getCurrentCumulativeDifficulty(uint32_t blockIndex) const = 0;
