@@ -571,7 +571,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   bool addOnTop = cache->getTopBlockIndex() == previousBlockIndex;
   auto maxBlockCumulativeSize = currency.maxBlockCumulativeSize(previousBlockIndex + 1);
   if (cumulativeBlockSize > maxBlockCumulativeSize) {
-    logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size";
+    logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size (" << cumulativeBlockSize << " > " << maxBlockCumulativeSize << ") [Check 1]";
     return error::BlockValidationError::CUMULATIVE_BLOCK_SIZE_TOO_BIG;
   }
 
@@ -608,7 +608,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   if (!currency.getBlockReward(cachedBlock.getBlock().majorVersion, blocksSizeMedian,
                                cumulativeBlockSize, alreadyGeneratedCoins, cumulativeFee, reward, emissionChange)) {
-    logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size";
+    logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size (" << cumulativeBlockSize << " > " << UINT64_C(2) * blocksSizeMedian << ") [Check 2]";
     return error::BlockValidationError::CUMULATIVE_BLOCK_SIZE_TOO_BIG;
   }
 
@@ -1826,21 +1826,24 @@ void Core::fillBlockTemplate(BlockTemplate& block, size_t medianSize, size_t max
     const CachedTransaction& transaction = *it;
 
     auto transactionBlobSize = transaction.getTransactionBinaryArray().size();
-    if (currency.fusionTxMaxSize() < transactionsSize + transactionBlobSize) {
+    auto fusionLimit = std::min(currency.fusionTxMaxSize(), maxTotalSize);
+    if (fusionLimit < transactionsSize + transactionBlobSize) {
+      logger(Logging::TRACE) << "Fusion transaction " << transaction.getTransactionHash() << " skipped including to block template because other tx sizes " << transactionsSize << " + this tx size " << transactionBlobSize << " > limit " << fusionLimit;
       continue;
     }
 
     if (!spentInputsChecker.haveSpentInputs(transaction.getTransaction())) {
       block.transactionHashes.emplace_back(transaction.getTransactionHash());
       transactionsSize += transactionBlobSize;
-      logger(Logging::TRACE) << "Fusion transaction " << transaction.getTransactionHash() << " included to block template";
+      logger(Logging::TRACE) << "Fusion transaction " << transaction.getTransactionHash() << " (size " << transactionBlobSize << ") included to block template";
     }
   }
 
   for (const auto& cachedTransaction : poolTransactions) {
-    size_t blockSizeLimit = (cachedTransaction.getTransactionFee() == 0) ? medianSize : maxTotalSize;
+    size_t blockSizeLimit = std::min((cachedTransaction.getTransactionFee() == 0) ? medianSize : maxTotalSize, maxTotalSize);
 
     if (blockSizeLimit < transactionsSize + cachedTransaction.getTransactionBinaryArray().size()) {
+      logger(Logging::TRACE) << "Transaction " << cachedTransaction.getTransactionHash() << " (fee " << cachedTransaction.getTransactionFee() << ") skipped including to block template because other tx sizes " << transactionsSize << " + this tx size " << cachedTransaction.getTransactionBinaryArray().size() << " > limit " << blockSizeLimit;
       continue;
     }
 
@@ -1848,11 +1851,13 @@ void Core::fillBlockTemplate(BlockTemplate& block, size_t medianSize, size_t max
       transactionsSize += cachedTransaction.getTransactionBinaryArray().size();
       fee += cachedTransaction.getTransactionFee();
       block.transactionHashes.emplace_back(cachedTransaction.getTransactionHash());
-      logger(Logging::TRACE) << "Transaction " << cachedTransaction.getTransactionHash() << " included to block template";
+      logger(Logging::TRACE) << "Transaction " << cachedTransaction.getTransactionHash() << " (fee " << cachedTransaction.getTransactionFee() << ", size " << cachedTransaction.getTransactionBinaryArray().size() << ")" << " included to block template";
     } else {
-      logger(Logging::TRACE) << "Transaction " << cachedTransaction.getTransactionHash() << " is failed to include to block template";
+      logger(Logging::TRACE) << "Transaction " << cachedTransaction.getTransactionHash() << " (fee " << cachedTransaction.getTransactionFee() << ", size " << cachedTransaction.getTransactionBinaryArray().size() << ")" << " failed to be included to block template";
     }
   }
+
+  logger(Logging::TRACE) << "Block size " << transactionsSize;
 }
 
 void Core::deleteAlternativeChains() {

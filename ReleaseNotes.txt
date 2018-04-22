@@ -1,3 +1,7 @@
+Release notes 1.2.1
+
+- Fix bug that would cause the network to become stuck when a fusion transaction was submitted that was too big
+
 Release notes 1.2.0
 
 - HARD FORK: Starting after block height 70913, block version 4 is used
