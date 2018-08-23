@@ -69,6 +69,17 @@ C:\WINDOWS\system32\vcruntime140.dll
 
 To compile the debug version, omit the `/p:Configuration=Release` parameter. Then you need to copy the debug dlls instead of the normal ones. These have the same name, only with a `d` at the end (e.g. `Qt5Cored.dll`), and are in the same location, except for `ucrtbased.dll` which you can find in `C:\Program Files (x86)\Windows Kits\10\bin\x64\ucrt\ucrtbased.dll`.
 
+### macOS
+
+Tested only with macOS High Sierra 10.13.6.
+
+Dependencies: `clang 9.1.0` or later, `CMake 3.5.2` or later, `Boost 1.67` or later and `Qt5` (tested with `Qt 5.10.1`).
+
+* Use [Homebrew](https://brew.sh/) to install `cmake` and `boost`.
+* Use [qt.io](https://www.qt.io/) to install QtCreator.
+
+To build, open the `CMakeLists.txt` in QtCreator. Also you can turn on `PORTABLE` flag in the project settings tab.
+
 ## Usage Notes
 
 The following files are created:

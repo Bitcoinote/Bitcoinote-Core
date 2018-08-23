@@ -600,7 +600,7 @@ BlockchainSynchronizer::UpdateConsumersResult BlockchainSynchronizer::updateCons
         hasErrors = true;
       }
 
-      if (addedCount >= 0 && !hasErrors) { // Also set if nothing was added (unless there were errors)
+      if (!hasErrors) { // Also set if nothing was added (unless there were errors)
         lastBlockIndex = std::min(lastBlockIndex, startOffset + addedCount - 1);
       }
     } else { // Also set if no new blocks were found, to avoid infinite loops (between pool and BC sync) when lastBlockIndex was never properly initialized
