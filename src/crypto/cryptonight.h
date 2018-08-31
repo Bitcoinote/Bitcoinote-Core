@@ -17,10 +17,17 @@
 
 #pragma once
 
-namespace CryptoNote
-{
-  const static boost::uuids::uuid BYTECOIN_NETWORK = { {  0xf0, 0x04, 0xaf, 0xa5, 0xca, 0x7d, 0x42, 0x46, 0x9a, 0xbc, 0xff, 0x82, 0x00, 0x1a, 0x52, 0xa1  } };
-  //const static boost::uuids::uuid BYTECOIN_NETWORK = { {  0xfa, 0xb1, 0xaf, 0x24, 0xc5, 0xce, 0x22, 0x46, 0x9a, 0xbc, 0xff, 0x82, 0x00, 0x1a, 0x52, 0xa1  } };
+// Cryptonight
+#define MEMORY         (1 << 21) /* 2 MiB */
+#define ITER           (1 << 19)
+#define MASK           0x1FFFF0
 
-}
+// Cryptonight Lite
+#define LITE_MEMORY    (1 << 20) /* 1 MiB */
+#define LITE_ITER      (1 << 18)
+#define LITE_MASK      0xFFFF0
 
+#define AES_BLOCK_SIZE  16
+#define AES_KEY_SIZE    32 /*16*/
+#define INIT_SIZE_BLK   8
+#define INIT_SIZE_BYTE (INIT_SIZE_BLK * AES_BLOCK_SIZE)	// 128

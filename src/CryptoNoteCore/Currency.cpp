@@ -151,8 +151,10 @@ size_t Currency::difficultyBlocksCountByBlockVersion(uint8_t blockMajorVersion) 
 }
 
 size_t Currency::blockGrantedFullRewardZoneByBlockVersion(uint8_t blockMajorVersion) const {
-  if (blockMajorVersion >= BLOCK_MAJOR_VERSION_4) {
+  if (blockMajorVersion >= BLOCK_MAJOR_VERSION_5) {
     return m_blockGrantedFullRewardZone;
+  } else if (blockMajorVersion == BLOCK_MAJOR_VERSION_4) {
+    return CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V4;
   } else if (blockMajorVersion == BLOCK_MAJOR_VERSION_3) {
     return CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V3;
   } else if (blockMajorVersion == BLOCK_MAJOR_VERSION_2) {
@@ -169,6 +171,8 @@ uint32_t Currency::upgradeHeight(uint8_t majorVersion) const {
     return m_upgradeHeightV3;
   } else if (majorVersion == BLOCK_MAJOR_VERSION_4) {
     return m_upgradeHeightV4;
+  } else if (majorVersion == BLOCK_MAJOR_VERSION_5) {
+    return m_upgradeHeightV5;
   } else {
     return static_cast<uint32_t>(-1);
   }
@@ -206,9 +210,10 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
 
 size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
   assert(height <= std::numeric_limits<uint64_t>::max() / m_maxBlockSizeGrowthSpeedNumerator);
-  size_t maxSize = static_cast<size_t>(m_maxBlockSizeInitial +
+  size_t maxBlockSizeInitial = height >= CryptoNote::parameters::MAX_BLOCK_SIZE_INITIAL_SWITCH_BLOCK_HEIGHT ? m_maxBlockSizeInitial : CryptoNote::parameters::PREVIOUS_MAX_BLOCK_SIZE_INITIAL;
+  size_t maxSize = static_cast<size_t>(maxBlockSizeInitial +
                      (height * m_maxBlockSizeGrowthSpeedNumerator) / m_maxBlockSizeGrowthSpeedDenominator);
-  assert(maxSize >= m_maxBlockSizeInitial);
+  assert(maxSize >= maxBlockSizeInitial);
   return maxSize;
 }
 
@@ -649,6 +654,7 @@ bool Currency::checkProofOfWork(Crypto::cn_context& context, const CachedBlock& 
   case BLOCK_MAJOR_VERSION_2:
   case BLOCK_MAJOR_VERSION_3:
   case BLOCK_MAJOR_VERSION_4:
+  case BLOCK_MAJOR_VERSION_5:
     return checkProofOfWorkV2(context, block, currentDiffic);
   }
 
@@ -716,6 +722,7 @@ Currency::Currency(Currency&& currency) :
   m_upgradeHeightV2(currency.m_upgradeHeightV2),
   m_upgradeHeightV3(currency.m_upgradeHeightV3),
   m_upgradeHeightV4(currency.m_upgradeHeightV4),
+  m_upgradeHeightV5(currency.m_upgradeHeightV5),
   m_upgradeVotingThreshold(currency.m_upgradeVotingThreshold),
   m_upgradeVotingWindow(currency.m_upgradeVotingWindow),
   m_upgradeWindow(currency.m_upgradeWindow),
@@ -780,6 +787,7 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
   upgradeHeightV2(parameters::UPGRADE_HEIGHT_V2);
   upgradeHeightV3(parameters::UPGRADE_HEIGHT_V3);
   upgradeHeightV4(parameters::UPGRADE_HEIGHT_V4);
+  upgradeHeightV5(parameters::UPGRADE_HEIGHT_V5);
   upgradeVotingThreshold(parameters::UPGRADE_VOTING_THRESHOLD);
   upgradeVotingWindow(parameters::UPGRADE_VOTING_WINDOW);
   upgradeWindow(parameters::UPGRADE_WINDOW);

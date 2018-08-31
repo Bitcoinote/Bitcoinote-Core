@@ -86,7 +86,7 @@ SynchronizationState::CheckResult SynchronizationState::checkInterval(const Bloc
   }
 
   // ALWAYS set new block height because we need it in blockchain synchronizer
-  result.newBlockHeight = static_cast<uint32_t>(m_blockchain.size());
+  result.newBlockHeight = iterationEnd;
 
   if (intervalEnd > m_blockchain.size()) {
     result.hasNewBlocks = true;

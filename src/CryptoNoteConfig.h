@@ -25,6 +25,7 @@ namespace CryptoNote {
 namespace parameters {
 
 const uint32_t HF_APR18_HEIGHT                               = 70912; // offset by one! actually 70913
+const uint32_t HF_SEP18_HEIGHT                               = 178500; 
 
 const uint32_t CRYPTONOTE_MAX_BLOCK_NUMBER                   = 500000000;
 const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
@@ -43,7 +44,8 @@ const uint64_t SECOND_BLOCK_REWARD                           = UINT64_C(84000000
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
 const size_t   CRYPTONOTE_REWARD_BLOCKS_WINDOW               = 100;
-const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE     = 350000; //size of block (bytes) after which reward for block calculated using block size
+const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE     = 128000; //size of block (bytes) after which reward for block calculated using block size
+const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V4  = 350000; //size of block (bytes) after which reward for block calculated using block size
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V3  = 20000; //size of block (bytes) after which reward for block calculated using block size
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2  = 20000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 10000;
@@ -63,7 +65,9 @@ const size_t   LWMA_DIFFICULTY_CUT                                = 60;  // time
 const size_t   LWMA_DIFFICULTY_LAG                                = 0;  // !!!
 static_assert(2 * LEGACY_DIFFICULTY_CUT <= LEGACY_DIFFICULTY_WINDOW - 2, "Bad LEGACY_DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
-const size_t   MAX_BLOCK_SIZE_INITIAL                        = 20 * 1024;
+const uint32_t MAX_BLOCK_SIZE_INITIAL_SWITCH_BLOCK_HEIGHT    = HF_SEP18_HEIGHT; // Block version 5: MAX_BLOCK_SIZE_INITIAL, previously PREVIOUS_MAX_BLOCK_SIZE_INITIAL
+const size_t   PREVIOUS_MAX_BLOCK_SIZE_INITIAL               = 20 * 1024;
+const size_t   MAX_BLOCK_SIZE_INITIAL                        = 120 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       = 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
 
@@ -82,6 +86,7 @@ const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 0;
 const uint32_t UPGRADE_HEIGHT_V2                                = 1;
 const uint32_t UPGRADE_HEIGHT_V3                                = 2;
 const uint32_t UPGRADE_HEIGHT_V4                                = HF_APR18_HEIGHT;
+const uint32_t UPGRADE_HEIGHT_V5                                = HF_SEP18_HEIGHT;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -104,6 +109,7 @@ const uint8_t  BLOCK_MAJOR_VERSION_1                         =  1;
 const uint8_t  BLOCK_MAJOR_VERSION_2                         =  2;
 const uint8_t  BLOCK_MAJOR_VERSION_3                         =  3;
 const uint8_t  BLOCK_MAJOR_VERSION_4                         =  4;
+const uint8_t  BLOCK_MAJOR_VERSION_5                         =  5;
 const uint8_t  BLOCK_MINOR_VERSION_0                         =  0;
 const uint8_t  BLOCK_MINOR_VERSION_1                         =  1;
 
@@ -140,7 +146,10 @@ struct CheckpointData {
 const std::initializer_list<CheckpointData> CHECKPOINTS = {
   {70000, "adfbc8ac4f5ae09404a6fbde4a8d06052f9f34d6864a758c54b2f7bc11a5a91d"},
   {70195, "e24699feac664e4c9c75060e299c23b2913f39bcafa9557d79c9601a0084b211"},
-  {70920, "a3316d86b15ebe20c9a8bb206dc823f6312d99ff81d4a9b6aa8a8a039b434004"}
+  {70920, "a3316d86b15ebe20c9a8bb206dc823f6312d99ff81d4a9b6aa8a8a039b434004"},
+  {100000, "1fab25b0991d6584c1f2d519a9df9a4ad1cd8f9fd2fc4ef95647573be2d9adbc"},
+  {130000, "88e551f18e24aee324479bfacf8f4a3448706183562447d2b8c523876301cc63"},
+  {160000, "2206d1346a32d7d354ea806c3c66ce32d44b999fd05f539672e137c71ae42b68"}
 };
 
 } // CryptoNote

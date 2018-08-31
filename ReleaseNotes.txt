@@ -1,3 +1,12 @@
+Release notes 2.0.0
+
+- HARD FORK: Starting after block height 178500, block version 5 is used
+- New PoW algorithm: Cryptonight Lite V1 ("cryptonight_lite_v7" in xmr-stak-miner)
+- Block size limits tweaked to prevent the situation of stuck transactions: TX submission is now rejected again before reaching a stuck state in the TX pool, max. block cumulative sizes are increased by 100k (after hard fork)
+- Checkpoints (100000, 130000, 160000)
+- Fix a bug which could lead to wallet crashes
+- Compiles on macOS now
+
 Release notes 1.2.1
 
 - Fix bug that would cause the network to become stuck when a fusion transaction was submitted that was too big
